@@ -5,7 +5,7 @@
 ## 🖼️ Screenshots
 
 ### Streamlit Web UI
-![TwineWriter UI](https://via.placeholder.com/800x500?text=TwineWriter+Streamlit+UI)
+![TwineWriter UI](/public/images/twinewriterui.png)
 
 *Beautiful web interface for creating Twitter content - edit, preview, and export with ease!*
 

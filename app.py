@@ -4,6 +4,7 @@ Streamlit UI for TwineWriter - AI Twitter Content Agent
 
 import streamlit as st
 import os
+import time
 from datetime import datetime
 import json
 from dotenv import load_dotenv
@@ -51,11 +52,7 @@ st.markdown("""
     .header-actions { display:flex; gap:8px; align-items:center; }
     .header-btn { background: rgba(255,255,255,0.12); color: #fff; border: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight:600; }
     .header-btn:hover { background: rgba(255,255,255,0.18); }
-    .header-desc { text-align: left; color: #475569; font-size: 0.95rem; margin: 8px 0 18px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0ea5e9; }
-    .header-desc p { margin: 8px 0; }
-    .header-desc ul { margin: 10px 0; padding-left: 25px; }
-    .header-desc li { margin: 4px 0; }
-    .header-desc strong { color: #0f172a; }
+    .header-desc { text-align: center; color: #475569; font-size: 0.95rem; margin: 8px 0 18px 0; }
     .tweet-box {
         background-color: #f0f2f6;
         border-radius: 10px;
@@ -140,41 +137,7 @@ header_html = f'''
 '''
 
 st.markdown(header_html, unsafe_allow_html=True)
-
-# Add action buttons as Streamlit columns
-header_col1, header_col2 = st.columns([6, 1])
-with header_col2:
-    # Docs button - opens GitHub repo
-    if st.button("📖 Docs", use_container_width=True):
-        webbrowser.open("https://github.com/sonatrix/twinewriter")
-    
-    # Examples button - toggles example topics
-    if st.button("💡 Examples", use_container_width=True):
-        st.session_state.show_examples = not st.session_state.show_examples
-
-# Show example topics if toggled
-if st.session_state.show_examples:
-    st.info("🎯 Example Topics (click to use):")
-    for topic in example_topics:
-        if st.button(f"• {topic}", use_container_width=True):
-            # Set the topic in the text area below
-            st.session_state.topic = topic
-            st.session_state.show_examples = False  # Hide examples after selection
-            st.experimental_rerun()
-
-st.markdown('''
-<div class="header-desc">
-    <p><strong>🚀 Features:</strong></p>
-    <ul>
-        <li>🤖 Multiple LLM Support - OpenAI, Anthropic, or Ollama (local & free)</li>
-        <li>✂️ Auto Thread Splitting - Intelligently breaks content into coherent tweets</li>
-        <li>🎯 Multiple Tone Styles - Professional, educational, witty, marketing & more</li>
-        <li>✏️ Human Review - Edit and approve content before finalizing</li>
-        <li>📊 Export Ready - Get structured JSON output for Twitter API integration</li>
-    </ul>
-    <p>Enter a topic, pick a tone, and let AI craft your Twitter content. Review, edit, and export with ease!</p>
-</div>
-''', unsafe_allow_html=True)
+st.markdown('<div class="header-desc">Create concise, engaging tweets and threaded conversations using AI — enter a topic, pick a tone, and generate content you can edit and export.</div>', unsafe_allow_html=True)
 
 # Main layout: left = inputs + info, right = results
 col1, col2 = st.columns([1, 2])
@@ -201,13 +164,29 @@ with col1:
 
     st.divider()
 
+    # Define callback for topic suggestion clicks
+    def set_topic(suggestion):
+        st.session_state.topic_input = suggestion
+
     # Input form
     topic = st.text_area(
         "Topic",
         placeholder="What do you want to tweet about?",
         help="Enter the main topic or subject for your tweet/thread",
-        height=100
+        height=100,
+        key="topic_input"
     )
+
+    # Topic suggestions in a collapsible section
+    with st.expander("💡 Need inspiration? Try these topics", expanded=False):
+        suggestion_cols = st.columns(2)
+        for i, topic_suggestion in enumerate(example_topics):
+            with suggestion_cols[i % 2]:
+                if st.button(f"• {topic_suggestion}", key=f"topic_{i}", 
+                           use_container_width=True, 
+                           on_click=set_topic, 
+                           args=(topic_suggestion,)):
+                    pass  # Button will update text via callback
 
     tone = st.selectbox(
         "Tone",
@@ -225,18 +204,27 @@ with col1:
     max_tweet_length = st.slider(
         "Max Tweet Length",
         min_value=100,
-        max_value=280,
+        max_value=500,
         value=280,
-        help="Maximum character count per tweet (Twitter limit is 280)"
+        help="Maximum character count per tweet (Twitter limit is 280 for unverified accounts)"
     )
 
     st.divider()
 
+    # Generate button with dynamic label and disabled state
+    button_label = "✨ Generating..." if st.session_state.is_generating else "✨ Generate Content"
     generate_button = st.button(
-        "✨ Generate Content",
+        button_label,
         type="primary",
         disabled=st.session_state.is_generating or not topic,
+        use_container_width=True,
     )
+
+    # Show a subtle message when button is disabled
+    if not topic:
+        st.caption("👆 Enter a topic above to enable generation")
+    elif st.session_state.is_generating:
+        st.caption("⏳ Generation in progress...")
 
     st.divider()
 
@@ -292,10 +280,17 @@ with col2:
         if not st.session_state.is_generating:
             st.session_state.is_generating = True
 
-        with st.spinner("🤖 Generating content..."):
-            try:
-                # Create initial state
-                initial_state = {
+        # Add progress bar and status
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        try:
+            # Show progress steps
+            status_text.text("� Analyzing topic and tone...")
+            progress_bar.progress(20)
+            
+            # Create initial state
+            initial_state = {
                     "topic": topic,
                     "tone": tone,
                     "base_content": base_content,
@@ -316,6 +311,9 @@ with col2:
                     st.stop()
                 
                 # Create graph without human review node for Streamlit
+                status_text.text("🎯 Creating generation pipeline...")
+                progress_bar.progress(40)
+                
                 from langgraph.graph import StateGraph, END
                 from twinewriter.nodes import (
                     input_node,
@@ -328,6 +326,9 @@ with col2:
                 workflow = StateGraph(AgentState)
                 
                 # Add nodes (excluding human review for automated flow)
+                status_text.text("⚡ Setting up AI processing nodes...")
+                progress_bar.progress(50)
+                
                 workflow.add_node("input", input_node)
                 workflow.add_node("generate", content_generation_node)
                 workflow.add_node("check_length", length_checker_node)
@@ -348,14 +349,23 @@ with col2:
                 workflow.add_edge("finalize", END)
                 
                 # Compile and run
+                status_text.text("🔨 Compiling workflow...")
+                progress_bar.progress(70)
+                
                 from langgraph.checkpoint.memory import MemorySaver
                 graph = workflow.compile(checkpointer=MemorySaver())
+                
+                status_text.text("🤖 Generating content with AI...")
+                progress_bar.progress(80)
                 
                 config = {"configurable": {"thread_id": f"streamlit-{datetime.now().timestamp()}"}}
                 
                 final_state = None
                 for state in graph.stream(initial_state, config):
                     final_state = state
+                
+                status_text.text("✨ Finalizing output...")
+                progress_bar.progress(90)
                 
                 # Extract final state
                 if final_state:
@@ -366,16 +376,26 @@ with col2:
                     st.session_state.generated_tweets = final_state["tweets"]
                     st.session_state.generation_count += 1
                     st.session_state.edit_mode = False
+                    progress_bar.progress(100)
+                    status_text.text("✅ Content generated successfully!")
                     st.success("✅ Content generated successfully!")
                 else:
                     error_msg = final_state.get("error", "Unknown error") if final_state else "No output generated"
+                    progress_bar.progress(100)
+                    status_text.text("❌ Generation failed")
                     st.error(f"❌ Error: {error_msg}")
                     
             except Exception as e:
+                progress_bar.progress(100)
+                status_text.text("❌ Error occurred")
                 st.error(f"❌ Error generating content: {str(e)}")
             finally:
                 # clear the generating flag so button becomes active again
                 st.session_state.is_generating = False
+                # Clear progress indicators after a short delay
+                time.sleep(1)
+                progress_bar.empty()
+                status_text.empty()
     
     # Display generated tweets
     if st.session_state.generated_tweets:        
