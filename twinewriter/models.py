@@ -1,10 +1,12 @@
 """Data models for TwineWriter"""
+
 from typing import TypedDict, List
 from pydantic import BaseModel, Field
 
 
 class TweetItem(BaseModel):
     """Single tweet in a thread"""
+
     index: int = Field(description="Position in thread (1-based)")
     content: str = Field(description="Tweet content")
     char_count: int = Field(description="Character count")
@@ -15,6 +17,7 @@ class TweetItem(BaseModel):
 
 class AgentState(TypedDict):
     """State passed between nodes in the graph"""
+
     # Input
     topic: str
     tone: str  # professional, educational, witty, marketing, storytelling, casual

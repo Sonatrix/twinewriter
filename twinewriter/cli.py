@@ -1,4 +1,5 @@
 """Command-line interface for TwineWriter."""
+
 from dotenv import load_dotenv
 
 from .workflow import run_twinewriter
@@ -11,7 +12,9 @@ def main():
     print("=" * 70)
 
     topic = input("Enter your topic: ").strip()
-    print("\nTone options: professional, educational, witty, marketing, storytelling, casual")
+    print(
+        "\nTone options: professional, educational, witty, marketing, storytelling, casual"
+    )
     tone = input("Enter tone (default: professional): ").strip() or "professional"
     base_content = input("Base content (optional, press Enter to skip): ").strip()
 

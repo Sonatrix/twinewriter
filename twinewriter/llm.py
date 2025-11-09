@@ -4,6 +4,7 @@ Provides a single get_llm() function that returns a small wrapper with an
 `invoke(messages)` method used by the nodes. The factory inspects environment
 variables and instantiates the appropriate langchain chat LLM adapter.
 """
+
 from __future__ import annotations
 
 import os
@@ -34,6 +35,7 @@ class LLMWrapper:
                 return out
             # If it's a plain string, wrap into a simple object
             if isinstance(out, str):
+
                 class _R:
                     pass
 
@@ -68,7 +70,9 @@ class LLMWrapper:
             r2.content = text or ""
             return r2
 
-        raise RuntimeError("Unable to invoke underlying LLM: no compatible method found")
+        raise RuntimeError(
+            "Unable to invoke underlying LLM: no compatible method found"
+        )
 
 
 def _create_llm_from_env() -> LLMWrapper:
@@ -112,7 +116,9 @@ def _create_llm_from_env() -> LLMWrapper:
         # bubble up as runtime error to let callers set state.error
         raise RuntimeError(f"LLM initialization failed: {e}")
 
-    raise RuntimeError("No LLM configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or USE_OLLAMA=true")
+    raise RuntimeError(
+        "No LLM configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or USE_OLLAMA=true"
+    )
 
 
 def get_llm() -> LLMWrapper:

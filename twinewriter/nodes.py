@@ -1,4 +1,5 @@
 """Node implementations for the TwineWriter workflow."""
+
 import os
 import re
 from datetime import datetime
@@ -66,7 +67,9 @@ Generate the tweet content now. Write it as a single cohesive piece - don't worr
     try:
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Create engaging Twitter content about: {state['topic']}")
+            HumanMessage(
+                content=f"Create engaging Twitter content about: {state['topic']}"
+            ),
         ]
 
         response = llm.invoke(messages)
@@ -93,11 +96,9 @@ def length_checker_node(state: AgentState) -> AgentState:
 
     if content_length <= max_length:
         # Single tweet
-        state["tweets"] = [TweetItem(
-            index=1,
-            content=state["raw_content"],
-            char_count=content_length
-        )]
+        state["tweets"] = [
+            TweetItem(index=1, content=state["raw_content"], char_count=content_length)
+        ]
         print("   ✅ Fits in single tweet!")
     else:
         print("   ⚠️  Exceeds limit - will need thread splitting")
@@ -122,7 +123,7 @@ def thread_splitter_node(state: AgentState) -> AgentState:
     effective_max = max_length - reserve_chars
 
     # Split by sentences or logical breaks
-    sentences = re.split(r'(?<=[.!?])\s+', content)
+    sentences = re.split(r"(?<=[.!?])\s+", content)
 
     tweets: List[str] = []
     current_tweet = ""
@@ -133,7 +134,7 @@ def thread_splitter_node(state: AgentState) -> AgentState:
             words = sentence.split()
             for word in words:
                 if len(current_tweet) + len(word) + 1 <= effective_max:
-                    current_tweet += (word + " ")
+                    current_tweet += word + " "
                 else:
                     if current_tweet:
                         tweets.append(current_tweet.strip())
@@ -141,7 +142,7 @@ def thread_splitter_node(state: AgentState) -> AgentState:
         else:
             # Try to add sentence to current tweet
             if len(current_tweet) + len(sentence) + 1 <= effective_max:
-                current_tweet += (sentence + " ")
+                current_tweet += sentence + " "
             else:
                 # Save current tweet and start new one
                 if current_tweet:
@@ -158,7 +159,7 @@ def thread_splitter_node(state: AgentState) -> AgentState:
         TweetItem(
             index=i + 1,
             content=f"{i+1}/{total_tweets} {tweet}",
-            char_count=len(f"{i+1}/{total_tweets} {tweet}")
+            char_count=len(f"{i+1}/{total_tweets} {tweet}"),
         )
         for i, tweet in enumerate(tweets)
     ]
@@ -190,12 +191,12 @@ def human_review_node(state: AgentState) -> AgentState:
 
     choice = input("\nYour choice: ").strip().lower()
 
-    if choice == 'a':
+    if choice == "a":
         state["approved"] = True
         state["needs_revision"] = False
         print("✅ Content approved!")
 
-    elif choice == 'e':
+    elif choice == "e":
         try:
             tweet_num = int(input("Which tweet # to edit? "))
         except Exception:
@@ -214,9 +215,7 @@ def human_review_node(state: AgentState) -> AgentState:
                 new_content = prefix + new_content
 
             state["tweets"][tweet_num - 1] = TweetItem(
-                index=tweet_num,
-                content=new_content,
-                char_count=len(new_content)
+                index=tweet_num, content=new_content, char_count=len(new_content)
             )
 
             print(f"✅ Tweet {tweet_num} updated!")
@@ -228,14 +227,14 @@ def human_review_node(state: AgentState) -> AgentState:
             state["needs_revision"] = False
             state["approved"] = False
 
-    elif choice == 'r':
+    elif choice == "r":
         feedback = input("Enter your feedback for revision: ").strip()
         state["human_feedback"] = feedback
         state["needs_revision"] = True
         state["approved"] = False
         print("🔄 Requesting revision...")
 
-    elif choice == 'q':
+    elif choice == "q":
         state["error"] = "User cancelled"
         print("❌ Cancelled by user")
 
@@ -279,7 +278,7 @@ Generate the REVISED content as a single cohesive piece."""
     try:
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content="Revise the content based on the feedback.")
+            HumanMessage(content="Revise the content based on the feedback."),
         ]
 
         response = llm.invoke(messages)
