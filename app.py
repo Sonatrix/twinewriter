@@ -374,6 +374,10 @@ with col2:
 
     # Process generation if button clicked
     if generate_button and topic:
+        # Clear previous generated content
+        st.session_state.generated_tweets = []
+        st.session_state.final_json = None
+        
         # mark generation as running to prevent duplicate clicks
         if not st.session_state.is_generating:
             st.session_state.is_generating = True
