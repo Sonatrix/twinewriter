@@ -84,7 +84,8 @@ TwineWriter uses **[uv](https://github.com/astral-sh/uv)** - an extremely fast P
 # Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Clone and setup
+# Clone the repository
+git clone https://github.com/Sonatrix/twinewriter.git
 cd twinewriter
 
 # Install dependencies (creates .venv automatically)
@@ -261,8 +262,6 @@ USE_OLLAMA=true
 OLLAMA_MODEL=llama3.2
 ```
 
-See [OLLAMA.md](OLLAMA.md) for complete guide.
-
 ## 🎨 Tone Styles
 
 - **professional** - Formal, business-appropriate
@@ -361,8 +360,19 @@ MIT License - feel free to use and modify!
 
 ## 🤝 Contributing
 
-Contributions welcome! Please open an issue or submit a PR.
+Contributions welcome! Please visit our [GitHub repository](https://github.com/Sonatrix/twinewriter) to:
+- Open issues or submit pull requests
+- View detailed documentation
+- Access installation guides
+- Find example code and usage patterns
+- Join the community
+
+For quick setup, check out our [Quick Start Guide](https://github.com/Sonatrix/twinewriter/blob/master/QUICKSTART.md).
 
 ---
 
 Built with ❤️ using [LangGraph](https://langchain-ai.github.io/langgraph/) and [uv](https://github.com/astral-sh/uv)
+
+---
+
+📚 [View on GitHub](https://github.com/Sonatrix/twinewriter) | 📖 [Documentation](https://github.com/Sonatrix/twinewriter/wiki) | 🚀 [Quick Start](https://github.com/Sonatrix/twinewriter/blob/master/QUICKSTART.md)

@@ -51,7 +51,11 @@ st.markdown("""
     .header-actions { display:flex; gap:8px; align-items:center; }
     .header-btn { background: rgba(255,255,255,0.12); color: #fff; border: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight:600; }
     .header-btn:hover { background: rgba(255,255,255,0.18); }
-    .header-desc { text-align: center; color: #475569; font-size: 0.95rem; margin: 8px 0 18px 0; }
+    .header-desc { text-align: left; color: #475569; font-size: 0.95rem; margin: 8px 0 18px 0; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0ea5e9; }
+    .header-desc p { margin: 8px 0; }
+    .header-desc ul { margin: 10px 0; padding-left: 25px; }
+    .header-desc li { margin: 4px 0; }
+    .header-desc strong { color: #0f172a; }
     .tweet-box {
         background-color: #f0f2f6;
         border-radius: 10px;
@@ -93,22 +97,84 @@ if 'edit_mode' not in st.session_state:
     st.session_state.edit_mode = False
 if 'is_generating' not in st.session_state:
     st.session_state.is_generating = False
+if 'show_examples' not in st.session_state:
+    st.session_state.show_examples = False
+if 'topic' not in st.session_state:
+    st.session_state.topic = ""
 
 # Header bar (beautiful)
-st.markdown(
-        '''
-        <div class="header-bar">
-            <div class="header-left">
-                <div class="logo-badge">🐦</div>
-                <div>
-                    <div class="header-title">TwineWriter</div>
-                    <div class="header-sub">AI Twitter Content Agent • Auto-threading • Edit & Export</div>
-                </div>
-            </div>
+import base64
+import webbrowser
+
+# Example topics for inspiration
+example_topics = [
+    "5 tips for effective time management in remote work",
+    "The future of AI in healthcare: opportunities and challenges",
+    "How to build a morning routine that sets you up for success",
+    "Understanding blockchain technology: a beginner's guide",
+    "Sustainable living: small changes with big environmental impact"
+]
+
+# Build logo data URI if a logo file exists in public/images/logo.png; fallback to emoji badge
+logo_img_html = '<div class="logo-badge">🐦</div>'
+try:
+    logo_path = os.path.join(os.path.dirname(__file__), "public", "images", "logo.png")
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode()
+        logo_img_html = f'<img src="data:image/png;base64,{encoded}" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" />'
+except Exception:
+    # leave fallback badge
+    pass
+
+header_html = f'''
+<div class="header-bar">
+    <div class="header-left">
+        {logo_img_html}
+        <div>
+            <div class="header-title">TwineWriter</div>
+            <div class="header-sub">AI Twitter Content Agent • Auto-threading • Edit & Export</div>
         </div>
-        ''',
-        unsafe_allow_html=True,
-)
+    </div>
+</div>
+'''
+
+st.markdown(header_html, unsafe_allow_html=True)
+
+# Add action buttons as Streamlit columns
+header_col1, header_col2 = st.columns([6, 1])
+with header_col2:
+    # Docs button - opens GitHub repo
+    if st.button("📖 Docs", use_container_width=True):
+        webbrowser.open("https://github.com/sonatrix/twinewriter")
+    
+    # Examples button - toggles example topics
+    if st.button("💡 Examples", use_container_width=True):
+        st.session_state.show_examples = not st.session_state.show_examples
+
+# Show example topics if toggled
+if st.session_state.show_examples:
+    st.info("🎯 Example Topics (click to use):")
+    for topic in example_topics:
+        if st.button(f"• {topic}", use_container_width=True):
+            # Set the topic in the text area below
+            st.session_state.topic = topic
+            st.session_state.show_examples = False  # Hide examples after selection
+            st.experimental_rerun()
+
+st.markdown('''
+<div class="header-desc">
+    <p><strong>🚀 Features:</strong></p>
+    <ul>
+        <li>🤖 Multiple LLM Support - OpenAI, Anthropic, or Ollama (local & free)</li>
+        <li>✂️ Auto Thread Splitting - Intelligently breaks content into coherent tweets</li>
+        <li>🎯 Multiple Tone Styles - Professional, educational, witty, marketing & more</li>
+        <li>✏️ Human Review - Edit and approve content before finalizing</li>
+        <li>📊 Export Ready - Get structured JSON output for Twitter API integration</li>
+    </ul>
+    <p>Enter a topic, pick a tone, and let AI craft your Twitter content. Review, edit, and export with ease!</p>
+</div>
+''', unsafe_allow_html=True)
 
 # Main layout: left = inputs + info, right = results
 col1, col2 = st.columns([1, 2])
