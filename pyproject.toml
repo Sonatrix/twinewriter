@@ -1,0 +1,33 @@
+[project]
+name = "twinewriter"
+version = "0.1.0"
+description = "AI Twitter content agent with LangGraph - crafts engaging tweets with automatic thread splitting and human review"
+readme = "README.md"
+authors = [
+    { name = "Praveen Kumar Verma" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "langchain>=1.0.3",
+    "langchain-anthropic>=1.0.1",
+    "langchain-ollama>=1.0.0",
+    "langchain-openai>=1.0.2",
+    "langgraph>=1.0.2",
+    "pydantic>=2.12.4",
+    "python-dotenv>=1.2.1",
+    "streamlit>=1.51.0",
+]
+
+[project.scripts]
+twinewriter = "twinewriter:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
