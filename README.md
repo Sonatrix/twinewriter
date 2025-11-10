@@ -4,7 +4,7 @@
 
 ## 🎥 Demo Video
 
-![Demo Video](/public/video/twinewriter-demo.webm)
+[![TwineWriter Demo](https://img.youtube.com/vi/oAHLIBKUTJ8/maxresdefault.jpg)](https://youtu.be/oAHLIBKUTJ8)
 
 *Watch TwineWriter in action - from topic input to streaming content generation and export!*
 
