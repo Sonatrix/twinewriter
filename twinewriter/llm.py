@@ -73,6 +73,72 @@ class LLMWrapper:
         raise RuntimeError(
             "Unable to invoke underlying LLM: no compatible method found"
         )
+    
+    def stream(self, messages: List[Any]):
+        """Stream the underlying LLM response token by token.
+        
+        Yields chunks of content as they are generated.
+        """
+        # If the model has a `stream` method, use it
+        if hasattr(self._llm, "stream"):
+            for chunk in self._llm.stream(messages):
+                if hasattr(chunk, "content"):
+                    yield chunk.content
+                elif isinstance(chunk, str):
+                    yield chunk
+        else:
+            # Fallback to non-streaming invoke
+            response = self.invoke(messages)
+            yield response.content
+
+
+def _create_llm_from_config(
+    llm_provider: str = "",
+    openai_api_key: str = "",
+    anthropic_api_key: str = "",
+    ollama_model: str = "llama3.2",
+    ollama_base_url: str = "http://localhost:11434"
+) -> LLMWrapper:
+    """Instantiate a langchain chat LLM based on provided configuration.
+
+    Priority:
+      1. openai_api_key -> langchain_openai.ChatOpenAI
+      2. anthropic_api_key -> langchain_anthropic.ChatAnthropic
+      3. llm_provider == "Ollama" -> langchain_ollama.ChatOllama
+    """
+    temp = float(os.getenv("LLM_TEMPERATURE", "0.7"))
+    
+    try:
+        # OpenAI
+        if openai_api_key:
+            from langchain_openai import ChatOpenAI
+
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            llm = ChatOpenAI(model=model, temperature=temp, api_key=openai_api_key)
+            return LLMWrapper(llm)
+
+        # Anthropic
+        if anthropic_api_key:
+            from langchain_anthropic import ChatAnthropic
+
+            model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+            llm = ChatAnthropic(model=model, temperature=temp, api_key=anthropic_api_key)
+            return LLMWrapper(llm)
+
+        # Ollama (local)
+        if llm_provider == "Ollama" and ollama_model:
+            from langchain_ollama import ChatOllama
+
+            llm = ChatOllama(model=ollama_model, base_url=ollama_base_url, temperature=temp)
+            return LLMWrapper(llm)
+
+    except Exception as e:
+        # bubble up as runtime error to let callers set state.error
+        raise RuntimeError(f"LLM initialization failed: {e}")
+
+    raise RuntimeError(
+        "No LLM configured. Provide API key or configure Ollama"
+    )
 
 
 def _create_llm_from_env() -> LLMWrapper:
@@ -85,21 +151,23 @@ def _create_llm_from_env() -> LLMWrapper:
     """
     # OpenAI
     try:
-        if os.getenv("OPENAI_API_KEY", "").lower() == "true":
+        openai_key = os.getenv("OPENAI_API_KEY", "")
+        if openai_key and openai_key.lower() != "false":
             from langchain_openai import ChatOpenAI
 
             model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
             temp = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-            llm = ChatOpenAI(model=model, temperature=temp)
+            llm = ChatOpenAI(model=model, temperature=temp, api_key=openai_key)
             return LLMWrapper(llm)
 
         # Anthropic
-        if os.getenv("ANTHROPIC_API_KEY", "").lower() == "true":
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+        if anthropic_key and anthropic_key.lower() != "false":
             from langchain_anthropic import ChatAnthropic
 
             model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
             temp = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-            llm = ChatAnthropic(model=model, temperature=temp)
+            llm = ChatAnthropic(model=model, temperature=temp, api_key=anthropic_key)
             return LLMWrapper(llm)
 
         # Ollama (local)
@@ -121,7 +189,23 @@ def _create_llm_from_env() -> LLMWrapper:
     )
 
 
-def get_llm() -> LLMWrapper:
+def get_llm(state: dict = None) -> LLMWrapper:
+    """Get LLM instance from state configuration or environment variables.
+    
+    If state is provided with LLM configuration, use that.
+    Otherwise, fall back to environment variables with caching.
+    """
+    # If state has LLM configuration, create from state (no caching)
+    if state and state.get("llm_provider"):
+        return _create_llm_from_config(
+            llm_provider=state.get("llm_provider", ""),
+            openai_api_key=state.get("openai_api_key", ""),
+            anthropic_api_key=state.get("anthropic_api_key", ""),
+            ollama_model=state.get("ollama_model", "llama3.2"),
+            ollama_base_url=state.get("ollama_base_url", "http://localhost:11434")
+        )
+    
+    # Fall back to cached environment-based LLM
     global _LLM_INSTANCE
     if _LLM_INSTANCE is None:
         _LLM_INSTANCE = _create_llm_from_env()

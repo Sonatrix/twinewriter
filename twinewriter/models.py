@@ -24,6 +24,13 @@ class AgentState(TypedDict):
     base_content: str  # Optional pre-written content
     max_tweet_length: int  # Default 280
 
+    # LLM Configuration
+    llm_provider: str  # OpenAI, Anthropic, Ollama
+    openai_api_key: str
+    anthropic_api_key: str
+    ollama_model: str
+    ollama_base_url: str
+
     # Generated content
     raw_content: str
     tweets: List[TweetItem]

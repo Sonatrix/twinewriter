@@ -2,6 +2,12 @@
 
 **TwineWriter** is an intelligent LangGraph-based agent that crafts engaging Twitter content with automatic thread splitting and human-in-the-loop review.
 
+## 🎥 Demo Video
+
+![Demo Video](/public/video/twinewriter-demo.webm)
+
+*Watch TwineWriter in action - from topic input to streaming content generation and export!*
+
 ## 🖼️ Screenshots
 
 ### Streamlit Web UI
@@ -73,8 +79,6 @@ TwineWriter uses a **LangGraph state machine** with the following nodes:
 ```
 
 ## 📦 Installation
-
-> **⚡ Quick Start**: See [QUICKSTART.md](QUICKSTART.md) for 2-minute setup guide!
 
 TwineWriter uses **[uv](https://github.com/astral-sh/uv)** - an extremely fast Python package manager.
 

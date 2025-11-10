@@ -35,11 +35,16 @@ def content_generation_node(state: AgentState) -> AgentState:
     """Generate tweet content using LLM"""
     print("\n✍️  CONTENT GENERATION NODE: Drafting content...")
 
-    # Use centralized LLM client
+    # If content already generated (from streaming), skip this node
+    if state.get("raw_content"):
+        print("   Content already generated, skipping...")
+        return state
+
+    # Use centralized LLM client with state configuration
     try:
         from .llm import get_llm
 
-        llm = get_llm()
+        llm = get_llm(state)
         print("   Using configured LLM client")
     except Exception as e:
         state["error"] = f"LLM initialization failed: {str(e)}"
@@ -72,6 +77,7 @@ Generate the tweet content now. Write it as a single cohesive piece - don't worr
             ),
         ]
 
+        # Non-streaming mode (streaming is handled in app.py)
         response = llm.invoke(messages)
         state["raw_content"] = response.content.strip()
 

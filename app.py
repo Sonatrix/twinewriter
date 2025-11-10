@@ -101,6 +101,23 @@ if "show_examples" not in st.session_state:
     st.session_state.show_examples = False
 if "topic" not in st.session_state:
     st.session_state.topic = ""
+# LLM Configuration in session state
+if "llm_provider" not in st.session_state:
+    st.session_state.llm_provider = None
+if "previous_llm_provider" not in st.session_state:
+    st.session_state.previous_llm_provider = None
+if "openai_api_key" not in st.session_state:
+    st.session_state.openai_api_key = ""
+if "anthropic_api_key" not in st.session_state:
+    st.session_state.anthropic_api_key = ""
+if "ollama_model" not in st.session_state:
+    st.session_state.ollama_model = "llama3.2"
+if "ollama_base_url" not in st.session_state:
+    st.session_state.ollama_base_url = "http://localhost:11434"
+if "config_source" not in st.session_state:
+    st.session_state.config_source = "Configure via UI"
+if "trigger_regenerate" not in st.session_state:
+    st.session_state.trigger_regenerate = False
 
 # Header bar (beautiful)
 import base64
@@ -152,95 +169,93 @@ with col1:
     # Input section
     st.header("📝 Content Settings")
 
+    # Helper function to clear session when LLM changes
+    def clear_session_on_llm_change(new_provider):
+        if st.session_state.previous_llm_provider is not None and \
+           st.session_state.previous_llm_provider != new_provider:
+            # Clear the generated content
+            st.session_state.generated_tweets = []
+            st.session_state.final_json = None
+            st.session_state.generation_count = 0
+            st.session_state.edit_mode = False
+            st.session_state.is_generating = False
+            st.info(f"🔄 Session cleared due to LLM provider change from {st.session_state.previous_llm_provider} to {new_provider}")
+        st.session_state.previous_llm_provider = new_provider
+
     # LLM Configuration Section
     with st.expander("🤖 LLM Configuration", expanded=False):
-        config_source = st.radio(
-            "Configuration Source",
-            options=["Use Environment Variables", "Configure via UI"],
-            help="Choose whether to use .env file settings or configure directly in the UI"
+        llm_provider = st.selectbox(
+            "Select LLM Provider",
+            options=["OpenAI", "Anthropic", "Ollama"],
+            help="Choose which LLM provider to use for content generation",
+            key="llm_provider_select"
         )
         
-        if config_source == "Configure via UI":
-            llm_provider = st.selectbox(
-                "Select LLM Provider",
-                options=["OpenAI", "Anthropic", "Ollama"],
-                help="Choose which LLM provider to use for content generation"
+        if llm_provider == "OpenAI":
+            openai_key = st.text_input(
+                "OpenAI API Key",
+                type="password",
+                help="Enter your OpenAI API key",
+                placeholder="sk-...",
+                key="openai_key_input"
             )
-            
-            if llm_provider == "OpenAI":
-                openai_key = st.text_input(
-                    "OpenAI API Key",
-                    type="password",
-                    help="Enter your OpenAI API key",
-                    placeholder="sk-..."
-                )
-                if openai_key:
-                    os.environ["OPENAI_API_KEY"] = openai_key
-                    os.environ["ANTHROPIC_API_KEY"] = ""
-                    os.environ["USE_OLLAMA"] = "false"
-                    st.success("✅ OpenAI configured")
-                else:
-                    st.info("👆 Enter your OpenAI API key above")
-                
-            elif llm_provider == "Anthropic":
-                anthropic_key = st.text_input(
-                    "Anthropic API Key",
-                    type="password",
-                    help="Enter your Anthropic API key",
-                    placeholder="sk-ant-..."
-                )
-                if anthropic_key:
-                    os.environ["ANTHROPIC_API_KEY"] = anthropic_key
-                    os.environ["OPENAI_API_KEY"] = ""
-                    os.environ["USE_OLLAMA"] = "false"
-                    st.success("✅ Anthropic configured")
-                else:
-                    st.info("👆 Enter your Anthropic API key above")
-                    
-            elif llm_provider == "Ollama":
-                ollama_model = st.text_input(
-                    "Ollama Model",
-                    value="llama3.2",
-                    help="Enter the Ollama model name (e.g., llama3.2, mistral)",
-                    placeholder="llama3.2"
-                )
-                ollama_base_url = st.text_input(
-                    "Ollama Base URL",
-                    value="http://localhost:11434",
-                    help="Ollama server URL",
-                    placeholder="http://localhost:11434"
-                )
-                if ollama_model:
-                    os.environ["USE_OLLAMA"] = "true"
-                    os.environ["OLLAMA_MODEL"] = ollama_model
-                    os.environ["OLLAMA_BASE_URL"] = ollama_base_url
-                    os.environ["OPENAI_API_KEY"] = ""
-                    os.environ["ANTHROPIC_API_KEY"] = ""
-                    st.success(f"✅ Ollama configured with model: {ollama_model}")
-        else:
-            # Using environment variables
-            st.info("📁 Using configuration from .env file")
-            has_openai_env = os.getenv("OPENAI_API_KEY", "").lower() == "true"
-            has_anthropic_env = os.getenv("ANTHROPIC_API_KEY", "").lower() == "true"
-            use_ollama_env = os.getenv("USE_OLLAMA", "").lower() == "true"
-            
-            if has_openai_env:
-                st.success("✅ OpenAI configured via environment")
-            elif has_anthropic_env:
-                st.success("✅ Anthropic configured via environment")
-            elif use_ollama_env:
-                model = os.getenv("OLLAMA_MODEL", "llama3.2")
-                st.success(f"✅ Ollama configured via environment (model: {model})")
+            if openai_key:
+                clear_session_on_llm_change("OpenAI")
+                st.session_state.llm_provider = "OpenAI"
+                st.session_state.openai_api_key = openai_key
+                st.session_state.anthropic_api_key = ""
+                st.success("✅ OpenAI configured")
             else:
-                st.warning("⚠️ No LLM configured in .env file")
+                st.info("👆 Enter your OpenAI API key above")
+            
+        elif llm_provider == "Anthropic":
+            anthropic_key = st.text_input(
+                "Anthropic API Key",
+                type="password",
+                help="Enter your Anthropic API key",
+                placeholder="sk-ant-...",
+                key="anthropic_key_input"
+            )
+            if anthropic_key:
+                clear_session_on_llm_change("Anthropic")
+                st.session_state.llm_provider = "Anthropic"
+                st.session_state.anthropic_api_key = anthropic_key
+                st.session_state.openai_api_key = ""
+                st.success("✅ Anthropic configured")
+            else:
+                st.info("👆 Enter your Anthropic API key above")
+                
+        elif llm_provider == "Ollama":
+            ollama_model = st.text_input(
+                "Ollama Model",
+                value=st.session_state.ollama_model,
+                help="Enter the Ollama model name (e.g., llama3.2, mistral)",
+                placeholder="llama3.2",
+                key="ollama_model_input"
+            )
+            ollama_base_url = st.text_input(
+                "Ollama Base URL",
+                value=st.session_state.ollama_base_url,
+                help="Ollama server URL",
+                placeholder="http://localhost:11434",
+                key="ollama_url_input"
+            )
+            if ollama_model:
+                clear_session_on_llm_change("Ollama")
+                st.session_state.llm_provider = "Ollama"
+                st.session_state.ollama_model = ollama_model
+                st.session_state.ollama_base_url = ollama_base_url
+                st.session_state.openai_api_key = ""
+                st.session_state.anthropic_api_key = ""
+                st.success(f"✅ Ollama configured with model: {ollama_model}")
 
     # Check LLM configuration status
-    has_openai = os.getenv("OPENAI_API_KEY", "") != ""
-    has_anthropic = os.getenv("ANTHROPIC_API_KEY", "") != ""
-    use_ollama = os.getenv("USE_OLLAMA", "").lower() == "true"
+    has_openai = st.session_state.openai_api_key != ""
+    has_anthropic = st.session_state.anthropic_api_key != ""
+    use_ollama = st.session_state.llm_provider == "Ollama" and st.session_state.ollama_model != ""
 
     if not (has_openai or has_anthropic or use_ollama):
-        st.warning("⚠️ Please configure an LLM provider above to generate content")
+        st.error("❌ Please configure an LLM provider above to generate content")
 
     st.divider()
 
@@ -372,11 +387,22 @@ with col2:
     # Results area header
     st.header("📱 Generated Content")
 
-    # Process generation if button clicked
-    if generate_button and topic:
+    # Process generation if button clicked or regenerate triggered
+    should_generate = (generate_button and topic) or st.session_state.trigger_regenerate
+    
+    if should_generate:
+        # Reset regenerate trigger
+        if st.session_state.trigger_regenerate:
+            st.session_state.trigger_regenerate = False
+        
         # Clear previous generated content
         st.session_state.generated_tweets = []
         st.session_state.final_json = None
+        
+        # Initialize streaming state
+        if "streaming_content" not in st.session_state:
+            st.session_state.streaming_content = ""
+        st.session_state.streaming_content = ""
         
         # mark generation as running to prevent duplicate clicks
         if not st.session_state.is_generating:
@@ -385,10 +411,14 @@ with col2:
         # Add progress bar and status
         progress_bar = st.progress(0)
         status_text = st.empty()
+        
+        # Create placeholder for streaming content
+        streaming_container = st.container()
+        stream_placeholder = streaming_container.empty()
 
         try:
             # Show progress steps
-            status_text.text("� Analyzing topic and tone...")
+            status_text.text("📋 Analyzing topic and tone...")
             progress_bar.progress(20)
 
             # Create initial state
@@ -397,6 +427,13 @@ with col2:
                 "tone": tone,
                 "base_content": base_content,
                 "max_tweet_length": max_tweet_length,
+                # LLM Configuration
+                "llm_provider": st.session_state.llm_provider or "",
+                "openai_api_key": st.session_state.openai_api_key,
+                "anthropic_api_key": st.session_state.anthropic_api_key,
+                "ollama_model": st.session_state.ollama_model,
+                "ollama_base_url": st.session_state.ollama_base_url,
+                # Generated content
                 "raw_content": "",
                 "tweets": [],
                 "human_feedback": "",
@@ -404,15 +441,22 @@ with col2:
                 "approved": False,
                 "final_json": {},
                 "error": "",
+                # Enable streaming flag
+                "enable_streaming": True,
             }
 
             # Verify LLM is configured
-            if not (
-                os.getenv("OPENAI_API_KEY", "").lower() == "true"
-                or os.getenv("ANTHROPIC_API_KEY", "").lower() == "true"
-                or os.getenv("USE_OLLAMA", "").lower() == "true"
-            ):
-                st.error("⚠️ No LLM configured! Check your .env file")
+            has_config = (
+                st.session_state.openai_api_key != ""
+                or st.session_state.anthropic_api_key != ""
+                or (st.session_state.llm_provider == "Ollama" and st.session_state.ollama_model != "")
+            )
+            
+            if not has_config:
+                st.error("⚠️ No LLM configured! Please configure an LLM provider above.")
+                st.session_state.is_generating = False
+                progress_bar.empty()
+                status_text.empty()
                 st.stop()
 
             # Create graph without human review node for Streamlit
@@ -458,18 +502,74 @@ with col2:
             progress_bar.progress(70)
 
             from langgraph.checkpoint.memory import MemorySaver
-
-            graph = workflow.compile(checkpointer=MemorySaver())
-
+            
+            # Generate content with streaming BEFORE workflow
             status_text.text("🤖 Generating content with AI...")
-            progress_bar.progress(80)
+            progress_bar.progress(75)
+            
+            # Import LLM and generate with streaming
+            from twinewriter.llm import get_llm
+            from langchain_core.messages import SystemMessage, HumanMessage
+            
+            try:
+                llm = get_llm(initial_state)
+                
+                system_prompt = f"""You are TwineWriter, an expert Twitter content creator.
+
+Your task: Create engaging Twitter content based on the user's topic and desired tone.
+
+GUIDELINES:
+- Tone: {tone}
+- Write naturally and conversationally
+- Use hooks that grab attention
+- Include relevant emojis when appropriate
+- Make it shareable and engaging
+- If the content is complex, write it as a cohesive piece (we'll split it later if needed)
+
+Topic: {topic}
+
+{f"Base content to expand on: {base_content}" if base_content else ""}
+
+Generate the tweet content now. Write it as a single cohesive piece - don't worry about length."""
+
+                messages = [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=f"Create engaging Twitter content about: {topic}"),
+                ]
+                
+                # Stream the content generation
+                full_content = ""
+                with stream_placeholder.container():
+                    st.markdown("### ✨ Generating Content...")
+                    content_placeholder = st.empty()
+                    char_counter = st.empty()
+                    
+                    for chunk in llm.stream(messages):
+                        full_content += chunk
+                        content_placeholder.markdown(full_content)
+                        char_counter.caption(f"📝 {len(full_content)} characters generated...")
+                
+                # Update initial state with generated content
+                initial_state["raw_content"] = full_content.strip()
+                initial_state["enable_streaming"] = False  # Disable streaming in workflow
+                
+                progress_bar.progress(85)
+                
+            except Exception as e:
+                st.error(f"❌ Error generating content: {e}")
+                st.session_state.is_generating = False
+                progress_bar.empty()
+                status_text.empty()
+                st.stop()
+            
+            # Now run the workflow for processing
+            status_text.text("📏 Processing and splitting content...")
+            
+            graph = workflow.compile(checkpointer=MemorySaver())
 
             config = {
                 "configurable": {"thread_id": f"streamlit-{datetime.now().timestamp()}"}
             }
-
-            # Create placeholder for streaming output
-            stream_placeholder = st.empty()
             
             final_state = None
             current_node = ""
@@ -487,6 +587,8 @@ with col2:
                         status_text.text("📥 Processing input...")
                     elif node_name == "generate":
                         status_text.text("✍️ Generating content...")
+                        # Clear the streaming placeholder after generation starts
+                        stream_placeholder.empty()
                     elif node_name == "check_length":
                         status_text.text("📏 Checking content length...")
                     elif node_name == "split_thread":
@@ -494,18 +596,13 @@ with col2:
                     elif node_name == "finalize":
                         status_text.text("✨ Finalizing...")
                 
-                # Display intermediate content if available
-                if node_state.get("raw_content"):
+                # Display final tweets after generation
+                if node_state.get("tweets") and node_name in ["check_length", "split_thread", "finalize"]:
                     with stream_placeholder.container():
-                        st.markdown("### 🔄 Live Preview")
-                        st.info(f"**Raw Content:**\n\n{node_state['raw_content'][:500]}...")
-                        
-                if node_state.get("tweets"):
-                    with stream_placeholder.container():
-                        st.markdown("### 🔄 Generated Tweets")
+                        st.markdown("### � Generated Tweets Preview")
                         for tweet in node_state["tweets"]:
-                            st.markdown(f"**Tweet {tweet.index}:** {tweet.content}")
-                            st.caption(f"Characters: {tweet.char_count}/280")
+                            st.markdown(f"**Tweet {tweet.index}/{len(node_state['tweets'])}:** {tweet.content}")
+                            st.caption(f"Characters: {tweet.char_count}/{max_tweet_length}")
 
             status_text.text("✨ Finalizing output...")
             progress_bar.progress(90)
@@ -539,12 +636,17 @@ with col2:
                 status_text.text("❌ Generation failed")
                 stream_placeholder.empty()
                 st.error(f"❌ Error: {error_msg}")
+                # Ensure button is re-enabled on error
+                st.session_state.is_generating = False
 
         except Exception as e:
             progress_bar.progress(100)
             status_text.text("❌ Error occurred")
-            stream_placeholder.empty()
+            if 'stream_placeholder' in locals():
+                stream_placeholder.empty()
             st.error(f"❌ Error generating content: {str(e)}")
+            # Ensure button is re-enabled on exception
+            st.session_state.is_generating = False
         finally:
             # clear the generating flag so button becomes active again
             st.session_state.is_generating = False
@@ -618,6 +720,7 @@ with col2:
             if st.button("🔄 Regenerate", type="secondary"):
                 st.session_state.generated_tweets = []
                 st.session_state.final_json = None
+                st.session_state.trigger_regenerate = True
                 st.rerun()
 
         with action_col2:
